@@ -1,0 +1,16 @@
+langchain==0.3.26
+langchain-huggingface==0.3.1
+langchain-text-splitters==0.3.8
+langchain-community==0.3.27
+langgraph==0.6.11
+faiss-cpu>=1.7.0
+sentence-transformers>=3.0.0
+rank_bm25==0.2.2
+openai>=1.86.0,<2.0.0
+python-dotenv>=1.0.0
+
+# 已移除: 代码未使用, 且Python 3.14无法安装(requires_python <3.14)
+# langchain-unstructured==0.1.6
+# unstructured==0.18.11
+# Markdown==3.8.2
+# lazy_loader==0.4
