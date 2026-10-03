@@ -24,7 +24,7 @@
 
 面向中文菜谱领域的检索增强生成（RAG）问答系统，并在此之上构建了完整的 Agent 能力：
 
-- **底层**：经典四段式 RAG 管线（数据准备 → 索引构建 → 检索优化 → 生成集成），基于 LangChain 0.3 + FAISS + bge-small-zh-v1.5 + Moonshot(Kimi)
+- **底层**：经典四段式 RAG 管线（数据准备 → 索引构建 → 检索优化 → 生成集成），基于 LangChain 0.3 + FAISS + bge-small-zh-v1.5 + 可插拔 LLM（Moonshot / DeepSeek / OpenAI）
 - **上层**：LangGraph 编排的 Agent 体系——Fast/Slow 双路径路由、ReAct 工具调用循环、检索自纠错、Reflexion 生成反思、主管-工人多智能体协作
 
 目标是解决"今天吃什么"的选择困难症：既支持"红烧肉怎么做"的具体问答，也支持"推荐几个简单的素菜"这类推荐/筛选需求。
@@ -89,7 +89,7 @@ code/C8/
 ├── main.py                        # 入口：RecipeRAGSystem 编排 + 交互式 CLI
 ├── config.py                      # RAGConfig 配置类（路径/模型/检索/生成参数）
 ├── requirements.txt               # 依赖清单
-├── .env                           # MOONSHOT_API_KEY（不提交到仓库）
+├── .env                           # LLM API Key（按 provider 选择，不提交到仓库）
 ├── cook/                          # 菜谱数据源（323 个 Markdown）
 │   └── dishes/<分类>/<菜名>/<菜名>.md
 ├── vector_index/                  # FAISS 索引缓存（首次构建后自动生成）
@@ -112,8 +112,10 @@ code/C8/
 # 1. 安装依赖（已在 requirements.txt 中剔除 Python 3.14 无法安装的包）
 pip install -r requirements.txt
 
-# 2. 配置 API Key（项目根目录创建 .env）
-MOONSHOT_API_KEY=sk-xxxxxxxx
+# 2. 配置 API Key（项目根目录创建 .env，按 provider 选一行）
+MOONSHOT_API_KEY=sk-xxxxxxxx          # provider=moonshot 时
+# DEEPSEEK_API_KEY=sk-xxxxxxxx        # provider=deepseek 时（同时改 config 的 llm_model 为 deepseek-chat）
+# OPENAI_API_KEY=sk-xxxxxxxx          # provider=openai 时
 
 # 3. 运行（须在 code/C8 目录下执行，数据路径为相对路径 ./cook）
 python main.py
@@ -158,7 +160,9 @@ python main.py
 | `data_path` | `./cook` | 菜谱数据目录（相对项目根） |
 | `index_save_path` | `./vector_index` | FAISS 索引缓存目录 |
 | `embedding_model` | `BAAI/bge-small-zh-v1.5` | 嵌入模型（HuggingFace） |
-| `llm_model` | `kimi-k3` | Kimi 对话模型 |
+| `llm_provider` | `moonshot` | LLM 提供商：`moonshot` / `deepseek` / `openai` |
+| `llm_model` | `kimi-k2.6` | 对话模型（DeepSeek 用 `deepseek-chat`，支持工具调用） |
+| `llm_base_url` | 空 | API 地址；为空用各提供商默认（deepseek→api.deepseek.com，openai→api.openai.com/v1） |
 | `top_k` | `3` | 检索返回候选数 |
 | `temperature` | `0.1` | 生成温度（低 = 更稳定） |
 | `max_tokens` | `2048` | 最大生成 token 数 |
@@ -175,7 +179,7 @@ python main.py
 
 ## 已知限制
 
-- 需要 Moonshot API Key（每次问答约 2~5 次 LLM 调用）
+- 需要 LLM 提供商 API Key（每次问答约 2~5 次 LLM 调用；免费账号通常有 RPM 限流，如 Moonshot 每分钟 3 次）
 - Agent 路径（ReAct / 多智能体）暂不支持流式输出，流式走标准管线
 - 上下文拼接有 2000 字符预算，超长菜谱可能被截断
 - 分类映射未覆盖 `semi-finished` / `template` 目录（归为"其他"）
@@ -193,4 +197,4 @@ python main.py
 
 ---
 
-*技术栈：LangChain 0.3 · LangGraph · FAISS · sentence-transformers · BM25 · Moonshot(Kimi)*
+*技术栈：LangChain 0.3 · LangGraph · FAISS · sentence-transformers · BM25 · 多LLM提供商（Moonshot / DeepSeek / OpenAI）*

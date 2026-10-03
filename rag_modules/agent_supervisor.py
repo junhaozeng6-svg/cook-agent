@@ -133,9 +133,17 @@ def build_supervisor_graph(retrieval_module, data_module, generation_module,
         return "end"
 
     def finalize_node(state: SupervisorState) -> dict:
-        """收尾节点: 提取主管的最终回答文本写入 answer"""
+        """收尾节点: 提取最终回答文本写入 answer
+
+        优先级:
+            1. Supervisor 的直接回答(有内容且未委派工具)
+            2. 最后一条 Worker 回填的结果(ToolMessage)——覆盖"委派到上限强制收尾"场景
+        """
         for m in reversed(state["messages"]):
             if isinstance(m, AIMessage) and m.content and not getattr(m, "tool_calls", None):
+                return {"answer": m.content}
+        for m in reversed(state["messages"]):
+            if isinstance(m, ToolMessage) and m.content:
                 return {"answer": m.content}
         return {"answer": "抱歉，未能生成回答。"}
 

@@ -55,9 +55,15 @@ class RecipeRAGSystem:
         if not Path(self.config.data_path).exists():
             raise FileNotFoundError(f"数据路径不存在: {self.config.data_path}")
 
-        # 检查API密钥
-        if not os.getenv("MOONSHOT_API_KEY"):
-            raise ValueError("请设置 MOONSHOT_API_KEY 环境变量")
+        # 检查API密钥(按LLM提供商)
+        provider_env_map = {
+            "moonshot": "MOONSHOT_API_KEY",
+            "deepseek": "DEEPSEEK_API_KEY",
+            "openai": "OPENAI_API_KEY",
+        }
+        env_key = provider_env_map.get(self.config.llm_provider.lower(), "MOONSHOT_API_KEY")
+        if not os.getenv(env_key):
+            raise ValueError(f"请设置 {env_key} 环境变量")
 
     #初始化所有模块，将config文件
     def initialize_system(self):
@@ -80,7 +86,9 @@ class RecipeRAGSystem:
         self.generation_module = GenerationIntegrationModule(
             model_name=self.config.llm_model,
             temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens
+            max_tokens=self.config.max_tokens,
+            provider=self.config.llm_provider,
+            base_url=self.config.llm_base_url
         )
 
         print("✅ 系统初始化完成！")

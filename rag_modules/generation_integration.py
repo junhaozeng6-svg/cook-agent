@@ -7,7 +7,6 @@ import logging
 from typing import List
 
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
-from langchain_community.chat_models.moonshot import MoonshotChat
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
@@ -17,36 +16,56 @@ logger = logging.getLogger(__name__)
 class GenerationIntegrationModule:
     """生成集成模块 - 负责LLM集成和回答生成"""
     
-    def __init__(self, model_name: str = "kimi-k3", temperature: float = 0.1, max_tokens: int = 2048):
+    def __init__(self, model_name: str = "kimi-k2.6", temperature: float = 1.0,
+                 max_tokens: int = 2048, provider: str = "moonshot",
+                 base_url: str = ""):
         """
         初始化生成集成模块
-        
+
         Args:
             model_name: 模型名称
             temperature: 生成温度
             max_tokens: 最大token数
+            provider:   LLM提供商(moonshot / deepseek / openai)
+            base_url:   API地址, 为空则使用各提供商默认地址
         """
         self.model_name = model_name
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.provider = provider
+        self.base_url = base_url
         self.llm = None
         self.setup_llm()
     
     def setup_llm(self):
-        """初始化大语言模型"""
-        logger.info(f"正在初始化LLM: {self.model_name}")
+        """按提供商初始化大语言模型(统一 OpenAI 兼容协议, 支持 bind_tools 工具调用)"""
+        provider = self.provider.lower()
+        logger.info(f"正在初始化LLM: {self.model_name} (provider: {provider})")
 
-        api_key = os.getenv("MOONSHOT_API_KEY")
+        provider_config = {
+            "moonshot": ("MOONSHOT_API_KEY", "https://api.moonshot.cn/v1"),
+            "deepseek": ("DEEPSEEK_API_KEY", "https://api.deepseek.com"),
+            "openai":   ("OPENAI_API_KEY",   "https://api.openai.com/v1"),
+        }
+        if provider not in provider_config:
+            raise ValueError(
+                f"不支持的LLM提供商: {provider} (可选: moonshot / deepseek / openai)"
+            )
+        env_key, default_url = provider_config[provider]
+        api_key = os.getenv(env_key)
         if not api_key:
-            raise ValueError("请设置 MOONSHOT_API_KEY 环境变量")
+            raise ValueError(f"请设置 {env_key} 环境变量")
 
-        self.llm = MoonshotChat(
+        # langchain_openai.ChatOpenAI: OpenAI 兼容协议, 支持 bind_tools (工具调用)
+        from langchain_openai import ChatOpenAI
+        self.llm = ChatOpenAI(
             model=self.model_name,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
-            moonshot_api_key=api_key
+            api_key=api_key,
+            base_url=self.base_url or default_url,
         )
-        
+
         logger.info("LLM初始化完成")
     #这个是普通回答，
     """ 用户问题 + 检索到的食谱
